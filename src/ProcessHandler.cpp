@@ -1,4 +1,4 @@
-#include "ProcessHandler.h"
+#include "ProcessFactory.h"
 #include <windows.h>
 #include <psapi.h>
 #include <vector>
@@ -10,8 +10,10 @@
 #include "Utility.h"
 #include "imgui.h"
 #include <algorithm>
+#include "Process.h"
+#include <memory>
 
-bool ProcessHandler::getPrivilege()
+bool ProcessFactory::getPrivilege()
 {
 	HANDLE hToken;
 	TOKEN_PRIVILEGES tokenPrivileges;
@@ -61,8 +63,8 @@ bool ProcessHandler::getPrivilege()
 	return true;
 }
 
-std::vector<Process> ProcessHandler::getProcessList() {
-	std::vector<Process> processList;
+std::vector<std::unique_ptr<Task>> ProcessFactory::getProcessList() {
+	std::vector<std::unique_ptr<Task>> processList;
 
 	HANDLE hndl = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS | TH32CS_SNAPMODULE, 0);
 	if (hndl)
@@ -71,18 +73,12 @@ std::vector<Process> ProcessHandler::getProcessList() {
 		Process32First(hndl, &process);
 		do
 		{
-			Process info = {};
+			std::unique_ptr<Task> info = std::make_unique<Task>();
 
-			std::string processIdString = std::to_string(process.th32ProcessID);
+			info->name = Utility::wcharToChar(process.szExeFile); // Assign the resulting char* to the info object's name field
+			info->id = Utility::numberToString(process.th32ProcessID);
 
-			info.originalId = process.th32ProcessID;
-
-			info.id = new char[processIdString.length() + 1]; // allocate memory
-			strcpy_s(info.id, processIdString.length() + 1, processIdString.c_str()); //Copy the ID into the heap allocated for info.id
-
-			info.name = Utility::wcharToChar(process.szExeFile);
-
-			processList.push_back(info);
+			processList.push_back(std::move(info));
 		} while (Process32Next(hndl, &process));
 
 		CloseHandle(hndl);
@@ -91,18 +87,18 @@ std::vector<Process> ProcessHandler::getProcessList() {
 	std::cout << "Collected " << processList.size() << " processes." << std::endl;
 
 	// Sort the vector by the value field using the comparison function
-	std::sort(processList.begin(), processList.end(), compareProcess);
+	//std::sort(processList.begin(), processList.end(), compareProcess);
 
 	return processList;
 }
 
 //Used to sort the process list by ID.
-bool ProcessHandler::compareProcess(const Process& a, const Process& b)
+bool ProcessFactory::compareProcess(const Task& a, const Task& b)
 {
 	return a.originalId < b.originalId;
 }
 
-bool ProcessHandler::killProcess(DWORD processID)
+bool ProcessFactory::killProcess(DWORD processID)
 {
 	const auto processHandle = OpenProcess(PROCESS_TERMINATE, false, processID);
 

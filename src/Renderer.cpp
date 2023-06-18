@@ -2,16 +2,15 @@
 #include "imgui.h"
 #include <iostream>
 #include <vector>
-#include "ProcessHandler.h"
+#include "ProcessFactory.h"
 #include "TaskTrack.h"
 #include <chrono>
 
-Renderer::Renderer() : nextUpdateTime(std::chrono::system_clock::now())
+Renderer::Renderer()
 {
-	std::cout << "Renderer Constructor()" << std::endl;;
+	std::cout << "Renderer Constructor()" << std::endl;
 
-	ProcessHandler::getPrivilege();
-	processList = ProcessHandler::getProcessList();
+	appRenderer = std::make_unique<ApplicationTab>();
 }
 
 void Renderer::renderUI()
@@ -24,27 +23,11 @@ void Renderer::renderUI()
 
 	bool windowOpen = true;
 
-	auto now = std::chrono::system_clock::now();
-	if (now >= nextUpdateTime) {
-		//Runs every second.
-		std::cout << "Updating process list." << std::endl;
-
-		processList.clear();
-
-		processList = ProcessHandler::getProcessList();
-
-		nextUpdateTime = now + std::chrono::seconds(5);
-	}
-
 	ImGui::Begin("Main Window", &windowOpen, windowFlags);
 
 	if (ImGui::BeginTabBar("TabBar"))
 	{
-		applicationsTab();
-
-		processesTab();
-
-		preformanceTab();
+		appRenderer->renderTab();
 
 		ImGui::EndTabBar();
 	}
@@ -53,98 +36,6 @@ void Renderer::renderUI()
 	//ImGui::ShowDemoWindow();
 
 	ImGui::End();
-}
-
-void Renderer::applicationsTab()
-{
-	if (ImGui::BeginTabItem("Applications"))
-	{
-		//Make the table view.
-		ImGuiTableFlags flags = ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_Resizable | ImGuiTableFlags_BordersOuter |
-			ImGuiTableFlags_BordersV | ImGuiTableFlags_ContextMenuInBody | ImGuiTableFlags_ScrollY;
-
-		if (ImGui::BeginTable("ApplicationsTable", 3, flags))
-		{
-			ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
-			ImGui::TableSetupColumn("Task");
-			ImGui::TableSetupColumn("ID");
-			ImGui::TableSetupColumn("RAM");
-			ImGui::TableHeadersRow();
-			ImGui::TableNextRow();
-
-			for (Process const& item : processList)
-			{
-				drawTableRow(item);
-			}
-
-			if (ImGui::BeginPopup("ApplicationsContext"))
-			{
-				ImGui::SeparatorText("Context Menu");
-
-				//Buttons for ending process etc.
-				if (ImGui::Selectable("Kill Process"))
-				{
-					std::cout << "Killing process: " << currentSelected.id << std::endl;
-
-					bool killedProcess = ProcessHandler::killProcess(currentSelected.originalId);
-
-					std::cout << "Killed process: " << killedProcess << std::endl;
-				}
-
-				ImGui::EndPopup();
-			}
-
-			ImGui::EndTable();
-		}
-
-		ImGui::EndTabItem();
-	}
-}
-
-void Renderer::drawTableRow(Process currentProcess)
-{
-	ImGui::TableSetColumnIndex(0);
-
-	bool isSelected = false;
-	if (ImGui::Selectable(currentProcess.name, isSelected, ImGuiSelectableFlags_SpanAllColumns)) {}
-
-	if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1))
-	{
-		std::cout << "Right Clicking on : " << currentProcess.name << std::endl;
-		ImGui::OpenPopup("ApplicationsContext");
-
-		currentSelected = currentProcess;
-	}
-
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text(currentProcess.id);
-
-	ImGui::TableSetColumnIndex(2);
-	ImGui::Text("Testing.");
-
-	ImGui::TableNextRow();
-}
-
-
-void Renderer::processesTab()
-{
-	if (ImGui::BeginTabItem("Processes"))
-	{
-		ImGui::Text("This is the Avocado tab!\nblah blah blah blah blah");
-
-
-		ImGui::EndTabItem();
-	}
-}
-
-void Renderer::preformanceTab()
-{
-	if (ImGui::BeginTabItem("Preformance"))
-	{
-		ImGui::Text("This is the Avocado tab!\nblah blah blah blah blah");
-
-		ImGui::EndTabItem();
-	}
 }
 
 void Renderer::setStyling()

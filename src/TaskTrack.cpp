@@ -8,6 +8,7 @@
 #include <tchar.h>
 #include <cassert>
 #include <chrono>
+#include <memory>
 
 // Data
 static ID3D11Device* g_pd3dDevice = nullptr;
@@ -27,13 +28,13 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 int main(int, char**)
 {
 	//Make renderer
-	Renderer renderer = Renderer();
+	std::unique_ptr<Renderer> renderer = std::make_unique<Renderer>();
 
 	// Create application window
 	//ImGui_ImplWin32_EnableDpiAwareness();
 	WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"ImGui Example", nullptr };
 	::RegisterClassExW(&wc);
-	HWND hwnd = ::CreateWindowW(wc.lpszClassName, renderer.getWindowName(), WS_OVERLAPPEDWINDOW, 100, 100, renderer.windowWidth, renderer.windowHeight, nullptr, nullptr, wc.hInstance, nullptr);
+	HWND hwnd = ::CreateWindowW(wc.lpszClassName, renderer->getWindowName(), WS_OVERLAPPEDWINDOW, 100, 100, renderer->windowWidth, renderer->windowHeight, nullptr, nullptr, wc.hInstance, nullptr);
 
 	// Initialize Direct3D
 	if (!CreateDeviceD3D(hwnd))
@@ -66,7 +67,7 @@ int main(int, char**)
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 	//Load styling
-	renderer.setStyling();
+	renderer->setStyling();
 
 	// Main loop
 	bool done = false;
@@ -100,7 +101,7 @@ int main(int, char**)
 		ImGui::NewFrame();
 
 		//Render UI
-		renderer.renderUI();
+		renderer->renderUI();
 
 		// Rendering
 		ImGui::Render();
