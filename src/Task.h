@@ -8,6 +8,8 @@ public:
 	DWORD originalId;
 	char* id;
 	char* name;
+	HICON icon = NULL;
 
 	Task();
+	~Task();
 };

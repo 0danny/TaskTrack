@@ -3,7 +3,6 @@
 #include <iostream>
 #include <vector>
 #include "ProcessFactory.h"
-#include "TaskTrack.h"
 #include <chrono>
 
 Renderer::Renderer()
@@ -11,6 +10,11 @@ Renderer::Renderer()
 	std::cout << "Renderer Constructor()" << std::endl;
 
 	appRenderer = std::make_unique<ApplicationTab>();
+}
+
+void Renderer::setDevice(ID3D11Device* device)
+{
+	appRenderer->g_pd3dDevice = device;
 }
 
 void Renderer::renderUI()

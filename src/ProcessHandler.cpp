@@ -63,6 +63,13 @@ bool ProcessFactory::getPrivilege()
 	return true;
 }
 
+/*
+	NOTE
+
+	I am well aware that this function is extremely expensive, and ontop of that it runs
+	on the UI thread. However, keep in mind that this is more of a PoC as a learn more c++
+	and become better at it over time.
+*/
 std::vector<std::unique_ptr<Task>> ProcessFactory::getProcessList() {
 	std::vector<std::unique_ptr<Task>> processList;
 
@@ -77,6 +84,33 @@ std::vector<std::unique_ptr<Task>> ProcessFactory::getProcessList() {
 
 			info->name = Utility::wcharToChar(process.szExeFile); // Assign the resulting char* to the info object's name field
 			info->id = Utility::numberToString(process.th32ProcessID);
+			info->originalId = process.th32ProcessID;
+
+			HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, process.th32ProcessID);
+			if (hProcess != NULL) {
+				wchar_t processPath[MAX_PATH];
+				if (GetModuleFileNameEx(hProcess, NULL, processPath, sizeof(processPath) / sizeof(wchar_t)))
+				{
+					std::string pPath = Utility::LPWSTRtoString(processPath);
+
+					info->icon = Utility::getProcessIcon(pPath);
+				}
+				else
+				{
+					std::cout << "GetModuleFileNameEx failed with error code " << GetLastError() << std::endl;
+				}
+
+				CloseHandle(hProcess);
+			}
+			else
+			{
+				std::string systemRoot = Utility::getSystemRootDirectory();
+				std::string defaultIconPath = systemRoot + "\\System32\\svchost.exe";
+
+				std::cout << "Could not call OpenProcess() on: " << info->name << " | Fallback: " << defaultIconPath << std::endl;
+				
+				info->icon = Utility::getProcessIcon(defaultIconPath); // Assign fallback icon
+			}
 
 			processList.push_back(std::move(info));
 		} while (Process32Next(hndl, &process));
@@ -86,11 +120,9 @@ std::vector<std::unique_ptr<Task>> ProcessFactory::getProcessList() {
 
 	std::cout << "Collected " << processList.size() << " processes." << std::endl;
 
-	// Sort the vector by the value field using the comparison function
-	//std::sort(processList.begin(), processList.end(), compareProcess);
-
 	return processList;
 }
+
 
 //Used to sort the process list by ID.
 bool ProcessFactory::compareProcess(const Task& a, const Task& b)

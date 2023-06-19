@@ -1,33 +1,31 @@
 #include "ApplicationTab.h"
 #include "ProcessFactory.h"
 #include "imgui.h"
-#include <thread>
-#include <mutex>
 #include <memory>
-#include <shared_mutex>
+#include "imgui_impl_dx11.h"
+#include "Utility.h"
+#include "TaskTrack.h"
 
 ApplicationTab::ApplicationTab()
 {
 	ProcessFactory::getPrivilege();
 
-	std::unique_lock<std::shared_mutex> lock(processListMutex);
 	processList = ProcessFactory::getProcessList();
-
-	// Start the thread on construction
-	processListThread = std::thread(&ApplicationTab::processListUpdater, this);
-}
-
-ApplicationTab::~ApplicationTab()
-{
-	shouldUpdateList = false;
-
-	if (processListThread.joinable()) {
-		processListThread.join();
-	}
 }
 
 void ApplicationTab::renderTab()
 {
+	auto now = std::chrono::system_clock::now();
+
+	if (now >= nextUpdateTime) {
+		//Runs every second.
+		std::cout << "Updating process list." << std::endl;
+
+		processList = ProcessFactory::getProcessList();
+
+		nextUpdateTime = now + std::chrono::seconds(refreshTime);
+	}
+
 	if (ImGui::BeginTabItem("Applications"))
 	{
 		//Make the table view.
@@ -41,29 +39,24 @@ void ApplicationTab::renderTab()
 			ImGui::TableSetupColumn("ID");
 			ImGui::TableSetupColumn("RAM");
 			ImGui::TableHeadersRow();
-			ImGui::TableNextRow();
 
-			//std::shared_lock<std::shared_mutex> lock(processListMutex);
-			for (const auto& process : processList) {
-				drawTableRow(process);
-			}
+			ImGuiListClipper clipper;
+			clipper.Begin(processList.size());
 
-			if (ImGui::BeginPopup("ApplicationsContext"))
+			while (clipper.Step())
 			{
-				ImGui::SeparatorText("Context Menu");
-
-				//Buttons for ending process etc.
-				if (ImGui::Selectable("Kill Process"))
+				for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
 				{
-					//std::cout << "Killing process: " << currentSelected->id << std::endl;
+					// The process to be drawn.
+					const auto& process = processList[i];
 
-					//bool killedProcess = ProcessFactory::killProcess(currentSelected->originalId);
-
-					//std::cout << "Killed process: " << killedProcess << std::endl;
+					ImGui::TableNextRow();
+					
+					drawTableRow(process);
 				}
-
-				ImGui::EndPopup();
 			}
+
+			createContextMenu();
 
 			ImGui::EndTable();
 		}
@@ -72,19 +65,47 @@ void ApplicationTab::renderTab()
 	}
 }
 
+void ApplicationTab::createContextMenu()
+{
+	if (ImGui::BeginPopup("ApplicationsContext"))
+	{
+		//Buttons for ending process etc.
+		if (ImGui::Selectable("Kill Process"))
+		{
+			bool killedProcess = ProcessFactory::killProcess(selectedProcess->originalId);
+
+			std::cout << "Killing process: " << selectedProcess->id << " | Result -> " << killedProcess << std::endl;
+		}
+
+		ImGui::EndPopup();
+	}
+}
+
 void ApplicationTab::drawTableRow(const std::unique_ptr<Task>& currentProcess)
 {
 	ImGui::TableSetColumnIndex(0);
+
+	if (currentProcess->icon != NULL)
+	{
+		ImTextureID texture = Utility::iconToImGuiTexture(g_pd3dDevice, currentProcess->icon);
+		if (texture != nullptr)
+		{
+			ImGui::Image(texture, ImVec2(16, 16));  // Draw
+		}
+
+		ImGui::SameLine();
+	}
 
 	bool isSelected = false;
 	if (ImGui::Selectable(currentProcess->name, isSelected, ImGuiSelectableFlags_SpanAllColumns)) {}
 
 	if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(1))
 	{
-		std::cout << "Right Clicking on : " << currentProcess->name << std::endl;
-		ImGui::OpenPopup("ApplicationsContext");
+		selectedProcess = currentProcess.get();
 
-		//currentSelected = currentProcess;
+		std::cout << "Right Clicking on : " << selectedProcess->name << std::endl;
+
+		ImGui::OpenPopup("ApplicationsContext");
 	}
 
 	ImGui::TableSetColumnIndex(1);
@@ -92,20 +113,4 @@ void ApplicationTab::drawTableRow(const std::unique_ptr<Task>& currentProcess)
 
 	ImGui::TableSetColumnIndex(2);
 	ImGui::Text("Testing.");
-
-	ImGui::TableNextRow();
-}
-
-void ApplicationTab::processListUpdater()
-{
-	while (shouldUpdateList)
-	{
-		// Update process list
-		std::unique_lock<std::shared_mutex> lock(processListMutex);
-		processList = ProcessFactory::getProcessList();
-
-		std::cout << "[Process Updater Thread]: Updating the list - " << processList.size() << " items." << std::endl;
-
-		std::this_thread::sleep_for(std::chrono::seconds(refreshTime));
-	}
 }

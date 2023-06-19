@@ -9,30 +9,27 @@
 #include <cassert>
 #include <chrono>
 #include <memory>
+#include <TaskTrack.h>
 
 // Data
-static ID3D11Device* g_pd3dDevice = nullptr;
-static ID3D11DeviceContext* g_pd3dDeviceContext = nullptr;
-static IDXGISwapChain* g_pSwapChain = nullptr;
-static UINT                     g_ResizeWidth = 0, g_ResizeHeight = 0;
-static ID3D11RenderTargetView* g_mainRenderTargetView = nullptr;
-
-// Forward declarations of helper functions
-bool CreateDeviceD3D(HWND hWnd);
-void CleanupDeviceD3D();
-void CreateRenderTarget();
-void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
 
-// Main code
 int main(int, char**)
 {
+	TaskTrack().initializeTaskTrack();
+
+	return 0;
+}
+
+void TaskTrack::initializeTaskTrack()
+{
 	//Make renderer
-	std::unique_ptr<Renderer> renderer = std::make_unique<Renderer>();
+	renderer = std::make_unique<Renderer>();
 
 	// Create application window
 	//ImGui_ImplWin32_EnableDpiAwareness();
-	WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"ImGui Example", nullptr };
+	WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, renderer->getWindowName(), nullptr };
 	::RegisterClassExW(&wc);
 	HWND hwnd = ::CreateWindowW(wc.lpszClassName, renderer->getWindowName(), WS_OVERLAPPEDWINDOW, 100, 100, renderer->windowWidth, renderer->windowHeight, nullptr, nullptr, wc.hInstance, nullptr);
 
@@ -41,8 +38,10 @@ int main(int, char**)
 	{
 		CleanupDeviceD3D();
 		::UnregisterClassW(wc.lpszClassName, wc.hInstance);
-		return 1;
+		return;
 	}
+
+	renderer->setDevice(g_pd3dDevice);
 
 	// Show the window
 	::ShowWindow(hwnd, SW_SHOWDEFAULT);
@@ -122,13 +121,11 @@ int main(int, char**)
 	CleanupDeviceD3D();
 	::DestroyWindow(hwnd);
 	::UnregisterClassW(wc.lpszClassName, wc.hInstance);
-
-	return 0;
 }
 
 // Helper functions
 
-bool CreateDeviceD3D(HWND hWnd)
+bool TaskTrack::CreateDeviceD3D(HWND hWnd)
 {
 	// Setup swap chain
 	DXGI_SWAP_CHAIN_DESC sd;
@@ -161,7 +158,7 @@ bool CreateDeviceD3D(HWND hWnd)
 	return true;
 }
 
-void CleanupDeviceD3D()
+void TaskTrack::CleanupDeviceD3D()
 {
 	CleanupRenderTarget();
 	if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = nullptr; }
@@ -169,7 +166,7 @@ void CleanupDeviceD3D()
 	if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = nullptr; }
 }
 
-void CreateRenderTarget()
+void TaskTrack::CreateRenderTarget()
 {
 	ID3D11Texture2D* pBackBuffer;
 	g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
@@ -180,19 +177,11 @@ void CreateRenderTarget()
 	pBackBuffer->Release();
 }
 
-void CleanupRenderTarget()
+void TaskTrack::CleanupRenderTarget()
 {
 	if (g_mainRenderTargetView) { g_mainRenderTargetView->Release(); g_mainRenderTargetView = nullptr; }
 }
 
-// Forward declare message handler from imgui_impl_win32.cpp
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
-// Win32 message handler
-// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
-// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
-// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
