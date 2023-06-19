@@ -70,7 +70,7 @@ bool ProcessFactory::getPrivilege()
 	on the UI thread. However, keep in mind that this is more of a PoC as a learn more c++
 	and become better at it over time.
 */
-std::vector<std::unique_ptr<Task>> ProcessFactory::getProcessList() {
+std::vector<std::unique_ptr<Task>> ProcessFactory::getProcessList(ID3D11Device* d3dDevice) {
 	std::vector<std::unique_ptr<Task>> processList;
 
 	HANDLE hndl = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS | TH32CS_SNAPMODULE, 0);
@@ -86,30 +86,43 @@ std::vector<std::unique_ptr<Task>> ProcessFactory::getProcessList() {
 			info->id = Utility::numberToString(process.th32ProcessID);
 			info->originalId = process.th32ProcessID;
 
-			HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, process.th32ProcessID);
-			if (hProcess != NULL) {
-				wchar_t processPath[MAX_PATH];
-				if (GetModuleFileNameEx(hProcess, NULL, processPath, sizeof(processPath) / sizeof(wchar_t)))
-				{
-					std::string pPath = Utility::LPWSTRtoString(processPath);
+			if (d3dDevice != nullptr)
+			{
+				HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, process.th32ProcessID);
+				if (hProcess != NULL) {
+					wchar_t processPath[MAX_PATH];
+					if (GetModuleFileNameEx(hProcess, NULL, processPath, sizeof(processPath) / sizeof(wchar_t)))
+					{
+						std::string pPath = Utility::LPWSTRtoString(processPath);
 
-					info->icon = Utility::getProcessIcon(pPath);
+						HICON icon = Utility::getProcessIcon(pPath);
+
+						//d3dDevice
+						info->texturePointer = Utility::iconToImGuiTexture(d3dDevice, icon);
+
+						DestroyIcon(icon);
+					}
+					else
+					{
+						std::cout << "GetModuleFileNameEx failed with error code " << GetLastError() << std::endl;
+					}
+
+					CloseHandle(hProcess);
 				}
 				else
 				{
-					std::cout << "GetModuleFileNameEx failed with error code " << GetLastError() << std::endl;
+					std::string systemRoot = Utility::getSystemRootDirectory();
+					std::string defaultIconPath = systemRoot + "\\System32\\svchost.exe";
+
+					//std::cout << "Could not call OpenProcess() on: " << info->name << " | Fallback: " << defaultIconPath << std::endl;
+
+					HICON icon = Utility::getProcessIcon(defaultIconPath); // Assign fallback icon
+
+					//d3dDevice
+					info->texturePointer = Utility::iconToImGuiTexture(d3dDevice, icon);
+
+					DestroyIcon(icon);
 				}
-
-				CloseHandle(hProcess);
-			}
-			else
-			{
-				std::string systemRoot = Utility::getSystemRootDirectory();
-				std::string defaultIconPath = systemRoot + "\\System32\\svchost.exe";
-
-				std::cout << "Could not call OpenProcess() on: " << info->name << " | Fallback: " << defaultIconPath << std::endl;
-				
-				info->icon = Utility::getProcessIcon(defaultIconPath); // Assign fallback icon
 			}
 
 			processList.push_back(std::move(info));

@@ -122,19 +122,18 @@ std::vector<BYTE> Utility::getBitmapData(HBITMAP hBitmap, BITMAP& bmp)
     return buffer;
 }
 
-ImTextureID Utility::iconToImGuiTexture(ID3D11Device* device, HICON hIcon)
+ID3D11ShaderResourceView* Utility::iconToImGuiTexture(ID3D11Device* device, HICON hIcon)
 {
     ICONINFO iconInfo;
     GetIconInfo(hIcon, &iconInfo);
 
     BITMAP bmp;
     int result = GetObject(iconInfo.hbmColor, sizeof(BITMAP), &bmp);
+
     std::vector<BYTE> buffer = getBitmapData(iconInfo.hbmColor, bmp);
 
     if (buffer.empty())
     {
-        std::cout << "Failed to get bitmap data." << std::endl;
-
         DeleteObject(iconInfo.hbmColor);
         DeleteObject(iconInfo.hbmMask);
         return nullptr;
@@ -161,19 +160,6 @@ ImTextureID Utility::iconToImGuiTexture(ID3D11Device* device, HICON hIcon)
     if (FAILED(hr) || pTexture == nullptr)
     {
         std::cout << "The code: " << std::hex << hr << std::endl;
-        LPVOID errMsg;
-        FormatMessage(
-            FORMAT_MESSAGE_ALLOCATE_BUFFER |
-            FORMAT_MESSAGE_FROM_SYSTEM |
-            FORMAT_MESSAGE_IGNORE_INSERTS,
-            NULL,
-            hr,
-            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-            (LPTSTR)&errMsg,
-            0, NULL);
-
-        // Free the buffer.
-        LocalFree(errMsg);
 
         // Failed to create the texture, cleanup and return
         DeleteObject(iconInfo.hbmColor);
@@ -188,6 +174,7 @@ ImTextureID Utility::iconToImGuiTexture(ID3D11Device* device, HICON hIcon)
 
     ID3D11ShaderResourceView* pTextureView = nullptr;
     hr = device->CreateShaderResourceView(pTexture, &srvDesc, &pTextureView);
+
     pTexture->Release();
 
     if (FAILED(hr) || pTextureView == nullptr)
@@ -203,5 +190,5 @@ ImTextureID Utility::iconToImGuiTexture(ID3D11Device* device, HICON hIcon)
     DeleteObject(iconInfo.hbmMask);
 
     // Return as ImTextureID
-    return (ImTextureID)pTextureView;
+    return pTextureView;
 }

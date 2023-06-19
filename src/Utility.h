@@ -14,7 +14,7 @@ namespace Utility
 
 	std::wstring stringToWString(const std::string& s);
 
-	ImTextureID iconToImGuiTexture(ID3D11Device* device, HICON hIcon);
+	ID3D11ShaderResourceView* iconToImGuiTexture(ID3D11Device* device, HICON hIcon);
 
 	std::vector<BYTE> getBitmapData(HBITMAP hBitmap, BITMAP& bmp);
 

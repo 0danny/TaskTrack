@@ -10,7 +10,7 @@ ApplicationTab::ApplicationTab()
 {
 	ProcessFactory::getPrivilege();
 
-	processList = ProcessFactory::getProcessList();
+	processList = ProcessFactory::getProcessList(g_pd3dDevice);
 }
 
 void ApplicationTab::renderTab()
@@ -21,7 +21,7 @@ void ApplicationTab::renderTab()
 		//Runs every second.
 		std::cout << "Updating process list." << std::endl;
 
-		processList = ProcessFactory::getProcessList();
+		processList = ProcessFactory::getProcessList(g_pd3dDevice);
 
 		nextUpdateTime = now + std::chrono::seconds(refreshTime);
 	}
@@ -51,7 +51,7 @@ void ApplicationTab::renderTab()
 					const auto& process = processList[i];
 
 					ImGui::TableNextRow();
-					
+
 					drawTableRow(process);
 				}
 			}
@@ -85,13 +85,9 @@ void ApplicationTab::drawTableRow(const std::unique_ptr<Task>& currentProcess)
 {
 	ImGui::TableSetColumnIndex(0);
 
-	if (currentProcess->icon != NULL)
+	if (currentProcess->texturePointer != nullptr)
 	{
-		ImTextureID texture = Utility::iconToImGuiTexture(g_pd3dDevice, currentProcess->icon);
-		if (texture != nullptr)
-		{
-			ImGui::Image(texture, ImVec2(16, 16));  // Draw
-		}
+		ImGui::Image(currentProcess->texturePointer, ImVec2(16, 16));  // Draw
 
 		ImGui::SameLine();
 	}

@@ -5,10 +5,11 @@
 #include <iostream>
 #include "Task.h"
 #include <memory>
+#include "d3d11.h"
 
 namespace ProcessFactory
 {
-	std::vector<std::unique_ptr<Task>> getProcessList();
+	std::vector<std::unique_ptr<Task>> getProcessList(ID3D11Device* d3dDevice);
 
 	bool getPrivilege();
 
