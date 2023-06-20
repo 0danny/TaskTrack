@@ -8,22 +8,19 @@
 #include <comdef.h>  // For _com_error
 #include <imgui.h>
 #include <iostream>
+#include <locale>
+#include <codecvt>
 #include <DXGIMessages.h>// Include the header file for DXGetErrorString
 #pragma comment(lib, "windowscodecs.lib")  // Add this line to your code
 
-char* Utility::wcharToChar(const wchar_t* wstr)
+std::string Utility::wcharToChar(const wchar_t* wstr)
 {
-	if (wstr == nullptr)
-		return nullptr;
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
 
-	size_t convertedChars = 0;
-	size_t bufferCount = wcslen(wstr) + 1;
+    std::string strTo(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, wstr, -1, &strTo[0], size_needed, NULL, NULL);
 
-	char* nameBuffer = new char[bufferCount]; // allocate the buffer on the heap
-
-	wcstombs_s(&convertedChars, nameBuffer, bufferCount, wstr, bufferCount - 1);
-
-	return nameBuffer;
+    return strTo;
 }
 
 std::wstring Utility::stringToWString(const std::string & s)
@@ -41,19 +38,9 @@ std::wstring Utility::stringToWString(const std::string & s)
 	return r;
 }
 
-char* Utility::numberToString(DWORD dw)
-{
-	const int bufferSize = 32; // Maximum number of characters needed for a DWORD
-	char* buffer = new char[bufferSize]; // Allocate buffer on the heap
-
-	// Use snprintf instead of sprintf_s for safer string formatting
-	std::snprintf(buffer, bufferSize, "%lu", dw);
-
-	return buffer;
-}
-
 std::string Utility::getSystemRootDirectory() {
     TCHAR windowsDirectory[MAX_PATH];
+
     GetWindowsDirectory(windowsDirectory, MAX_PATH);
 
     // Convert from TCHAR (which is wchar_t on Unicode Windows) to std::string

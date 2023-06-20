@@ -7,8 +7,7 @@
 
 namespace Utility
 {
-	char* wcharToChar(const wchar_t* wchar);
-	char* numberToString(DWORD dw);
+	std::string wcharToChar(const wchar_t* wstr);
 
 	HICON getProcessIcon(const std::string& path);
 

@@ -11,7 +11,4 @@ Task::~Task()
 	{
 		texturePointer->Release();
 	}
-
-	delete[] name;
-	delete[] id;
 }

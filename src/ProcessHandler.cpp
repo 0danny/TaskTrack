@@ -83,7 +83,7 @@ std::vector<std::unique_ptr<Task>> ProcessFactory::getProcessList(ID3D11Device* 
 			std::unique_ptr<Task> info = std::make_unique<Task>();
 
 			info->name = Utility::wcharToChar(process.szExeFile); // Assign the resulting char* to the info object's name field
-			info->id = Utility::numberToString(process.th32ProcessID);
+			info->id = std::to_string(process.th32ProcessID);
 			info->originalId = process.th32ProcessID;
 
 			if (d3dDevice != nullptr)

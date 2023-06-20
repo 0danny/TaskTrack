@@ -3,13 +3,14 @@
 #include <memory>
 #include "imgui.h"
 #include "d3d11.h"
+#include <string>
 
 class Task
 {
 public:
 	DWORD originalId;
-	char* id;
-	char* name;
+	std::string id;
+	std::string name;
 
 	ID3D11ShaderResourceView* texturePointer = nullptr;
 
